@@ -36,6 +36,27 @@ class _allpoints_page extends State<allpoints_page> {
     mapController = controller;
   }
 
+  void _getCurrentLocation() {
+    Geolocator
+        .getCurrentPosition(desiredAccuracy: LocationAccuracy.best, forceAndroidLocationManager: true)
+        .then((Position position) {
+      setState(() {
+        _currentPosition = position;
+        double lat = _currentPosition.latitude;
+        double lng = _currentPosition.longitude;
+
+        setState((){
+          _center = LatLng(lat, -lng);
+        });
+
+        // _center = const LatLng(lat.toDouble(), lng.toDouble());
+        print("mylocation"+lat.toString() +"  "+lng.toString());
+      });
+    }).catchError((e) {
+      print(e);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     _getCurrentLocation();
@@ -58,29 +79,5 @@ class _allpoints_page extends State<allpoints_page> {
 
   }
 
-  void _getCurrentLocation() {
-    Geolocator
-        .getCurrentPosition(desiredAccuracy: LocationAccuracy.best, forceAndroidLocationManager: true)
-        .then((Position position) {
-      setState(() {
-        _currentPosition = position;
-        double lat = _currentPosition.latitude;
-        double lng = _currentPosition.longitude;
 
-
-        GoogleMap(
-          onMapCreated: _onMapCreated,
-          initialCameraPosition: CameraPosition(
-            target: _center,
-            zoom: 11.0,
-          ),
-        );
-
-        // _center = const LatLng(lat.toDouble(), lng.toDouble());
-        print("mylocation"+lat.toString() +"  "+lng.toString());
-      });
-    }).catchError((e) {
-      print(e);
-    });
-  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uha1/allmaps/agri_myposts.dart';
 import 'package:uha1/mainscreens/productionground_page.dart';
 
 import 'agrigroundfuels_page.dart';
@@ -179,7 +180,7 @@ class _agri_page extends State<agri_page> {
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                  builder: (context) => allpoints_page()),
+                                  builder: (context) => agri_myposts()),
                             );
                             // showdata();
                           },

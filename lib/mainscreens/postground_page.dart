@@ -1,55 +1,64 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:intl/intl.dart';
 import 'dart:io';
 
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart';
-import 'package:uha1/mainscreens/production_page.dart';
+import 'package:uha1/mainscreens/post_page.dart';
 import 'package:uuid/uuid.dart';
 
-class productionground_page extends StatefulWidget{
 
 
-    static const String routeName = '/production';
-    const productionground_page({Key? key}) : super(key: key);
 
-    @override
-    State<productionground_page> createState() => _productionground_page();
-  }
+class postground_page extends StatefulWidget {
+  static const String routeName = '/agripage';
+  const postground_page({Key? key}) : super(key: key);
 
-class _productionground_page extends State<productionground_page> {
-  static const String idScreen = "productionpage";
+  @override
+  State<postground_page> createState() => _postground_page();
+}
 
-  bool evisible = true;
-  bool vvisible = false;
-  firebase_storage.FirebaseStorage storage =
-      firebase_storage.FirebaseStorage.instance;
-  File? _photo;
-  String imageurl = "";
+class _postground_page extends State<postground_page> {
   late String slat = ""; //
   late String slng = "";
+  bool evisible = true;
+  bool vvisible = false;
+  String northimage = "";
+  String southimage = "";
+  String eastimage = "";
+  String westimage = "";
+  String ownername = "";
   final TextEditingController eobv = TextEditingController();
 
-  String? productiondistance, productiontype;
-  Stream<QuerySnapshot>? productiondistancespinner,
-      productiontypespinner;
-  String ownername = "";
+  bool north = false;
+  bool south = false;
+  bool east = false;
+  bool west = false;
+
   final dbref = FirebaseDatabase.instance.reference();
 
 
 
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    getLocation();
+  }
 
 
 
-
-
+  firebase_storage.FirebaseStorage storage =
+      firebase_storage.FirebaseStorage.instance;
+  File? _photo, _nphoto, _sphoto, _wphoto, _ephoto;
+  final ImagePicker _picker = ImagePicker();
 
   Future imgFromGallery(context) async {
     final pickedFile = await ImagePicker.pickImage(source: ImageSource.gallery);
@@ -57,6 +66,21 @@ class _productionground_page extends State<productionground_page> {
     setState(() {
       if (pickedFile != null) {
         _photo = File(pickedFile.path);
+
+        if(north){
+          _nphoto = _photo;
+        }
+        if(south){
+          _sphoto = _photo;
+        }
+        if(west){
+          _wphoto = _photo;
+
+        }
+        if(east){
+          _ephoto = _photo;
+        }
+
         progressDialogue(context);
         uploadFile(context);
       } else {
@@ -71,6 +95,19 @@ class _productionground_page extends State<productionground_page> {
     setState(() {
       if (pickedFile != null) {
         _photo = File(pickedFile.path);
+        if(north){
+          _nphoto = _photo;
+        }
+        if(south){
+          _sphoto = _photo;
+        }
+        if(west){
+          _wphoto = _photo;
+
+        }
+        if(east){
+          _ephoto = _photo;
+        }
         progressDialogue(context);
         uploadFile(context);
       } else {
@@ -94,15 +131,40 @@ class _productionground_page extends State<productionground_page> {
           .child('file/');
       await ref.putFile(_photo!);
       // ref.getDownloadURL();
-      imageurl = (await ref.getDownloadURL()).toString();
-      // setState(() async {
-      //   imageurl = (await ref.getDownloadURL()).toString();
-      // });
-      if(imageurl!= null){
+
+      if(north){
+        northimage = (await ref.getDownloadURL()).toString();
+      }
+
+      if(south){
+        southimage = (await ref.getDownloadURL()).toString();
+        if(southimage!= null){
+          Navigator.pop(context1);
+        }
+      }
+      if(west){
+        westimage = (await ref.getDownloadURL()).toString();
+        if(westimage!= null){
+          Navigator.pop(context1);
+        }
+      }
+      if(east){
+        eastimage = (await ref.getDownloadURL()).toString();
+        if(eastimage!= null){
+          Navigator.pop(context1);
+        }
+      }
+
+      if(north == true && northimage!= null){
         Navigator.pop(context1);
       }
 
-      print('this is url ' + imageurl);
+      // setState(() async {
+      //   imageurl = (await ref.getDownloadURL()).toString();
+      // });
+
+
+      // print('this is url ' + imageurl);
     } catch (e) {
       print('error occured');
       Navigator.pop(context1);
@@ -110,6 +172,45 @@ class _productionground_page extends State<productionground_page> {
 
     }
   }
+
+  void writedata() async {
+    if (slat == "") {
+      toastshow("Failed to fetch location please click get location");
+    } else if (slng == "") {
+      toastshow("Failed to fetch location please click get location");
+    } else if (northimage == "") {
+      toastshow("Failed to Upload Image 1");
+    } else if (southimage == "") {
+      toastshow("Failed to Upload Image 2");
+    } else if (westimage == "") {
+      toastshow("Failed to upload image 3");
+    }else if(eastimage == ""){
+      toastshow("Failed to Upload Image 4");
+
+    } else if (eobv.text.isEmpty) {
+      toastshow("Please enter Observation");
+    } else {
+      readowner();
+      setState(() {
+        vvisible = true;
+        evisible = false;
+      });
+    }
+  }
+
+
+  Future readowner() async {
+    final dref = FirebaseDatabase.instance.reference()
+        .child("users")
+        .child(FirebaseAuth.instance.currentUser.uid)
+        .child("name");
+
+    setState(() async {
+      ownername = (await dref.once()).value;
+    });
+
+  }
+
   progressDialogue(BuildContext context) {
     //set up the AlertDialog
     AlertDialog alert=AlertDialog(
@@ -143,43 +244,12 @@ class _productionground_page extends State<productionground_page> {
       // },
     );
   }
+
   void toastshow(mes) async {
     Fluttertoast.showToast(msg: mes, toastLength: Toast.LENGTH_SHORT);
   }
 
-  void writedata() async {
-    if (slat == "") {
-      toastshow("Failed to fetch location please click get location");
-    } else if (slng == "") {
-      toastshow("Failed to fetch location please click get location");
-    } else if (productiondistance == null) {
-      toastshow("Please choose Distance");
-    } else if (productiontype == null) {
-      toastshow("Please choose type");
-    } else if (imageurl == "") {
-      toastshow("Failed to upload image");
-    } else if (eobv.text.isEmpty) {
-      toastshow("Please enter Observation");
-    } else {
-      readowner();
-      setState(() {
-        vvisible = true;
-        evisible = false;
-      });
-    }
-  }
 
-  Future readowner() async {
-    final dref = FirebaseDatabase.instance.reference()
-        .child("users")
-        .child(FirebaseAuth.instance.currentUser.uid)
-        .child("name");
-
-    setState(() async {
-      ownername = (await dref.once()).value;
-    });
-
-  }
 
 
   void getLocation() async {
@@ -195,27 +265,9 @@ class _productionground_page extends State<productionground_page> {
 
 
   @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-
-    getLocation();
-    productiondistancespinner =
-        FirebaseFirestore.instance.collection("productiondistance").snapshots();
-    productiontypespinner = FirebaseFirestore.instance
-        .collection("productiontype")
-        .snapshots();
-
-
-
-
-
-
-  }
-  @override
   Widget build(BuildContext context) {
-
-    return Container(
+    // TODO: implement build
+    return Container (
       decoration: BoxDecoration(
           image: DecorationImage(
               image: AssetImage('assets/magri.png'), fit: BoxFit.cover)),
@@ -234,7 +286,7 @@ class _productionground_page extends State<productionground_page> {
                           child: Padding(
                               padding: EdgeInsets.only(top: 80, left: 20, right: 20),
                               child: Column(children: [
-                                Text('Production',
+                                Text('Ground fuels',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                         fontSize: 30.0, fontWeight: FontWeight.bold)),
@@ -329,166 +381,249 @@ class _productionground_page extends State<productionground_page> {
                                 SizedBox(
                                   height: 20.0,
                                 ),
-                                Row(
-                                  children: <Widget>[
-                                    Expanded(
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Container(
-                                          color: Colors.white,
-                                          child: Text('Distance'),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Container(
-                                            width: double.infinity,
-                                            padding:
-                                            EdgeInsets.fromLTRB(10, 2, 10, 2),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: Colors.red),
-                                            ),
-                                            child: DropdownButtonHideUnderline(
-                                              child: StreamBuilder<QuerySnapshot>(
-                                                  stream: productiondistancespinner,
-                                                  builder: (BuildContext context,
-                                                      AsyncSnapshot<QuerySnapshot>
-                                                      snapshot) {
-                                                    return DropdownButton(
-                                                      value: productiondistance,
 
-                                                      style: new TextStyle(
-                                                          color: Colors.black,
-                                                          fontSize: 17),
-                                                      // Down Arrow Icon
-                                                      icon: const Icon(
-                                                          Icons.keyboard_arrow_down),
-                                                      hint: const Text(
-                                                          "Choose Fuel Type"),
-                                                      // Array list of items
-                                                      items: snapshot.data?.docs
-                                                          .map((govData) {
-                                                        return DropdownMenuItem(
-                                                          value: govData.id,
-                                                          child: Text(govData.id),
-                                                        );
-                                                      }).toList(),
-                                                      onChanged: (String? value) {
-                                                        // style: new TextStyle(color: Colors.black)
-                                                        setState(
-                                                              () {
-                                                            productiondistance = value!;
-                                                          },
-                                                        );
-                                                      },
-                                                    );
-                                                  }),
-                                            )
 
-                                          //here need to remove
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 10.0,
-                                ),
-                                new Row(
+                                new Column(
+
                                   children: <Widget>[
-                                    Expanded(
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Container(
-                                          color: Colors.white,
-                                          child: Text('Veg Type'),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Container(
-                                            width: double.infinity,
-                                            padding:
-                                            EdgeInsets.fromLTRB(10, 2, 10, 2),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: Colors.red),
+
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: <Widget>[
+
+
+                                        Column(
+
+                                          children: <Widget>[
+                                            SizedBox(
+                                              height: 150.0,
+                                              width: 100.0,
+                                              child: GestureDetector(
+                                                onTap: () {
+
+                                                  north = true;
+                                                  south = false;
+                                                  west = false;
+                                                  east = false;
+                                                  _showPicker(context);
+                                                },
+                                                child: Container(
+                                                  width: 200,
+                                                  height: 200,
+                                                  decoration:
+                                                  BoxDecoration(color: Colors.red[200]),
+                                                  child: _nphoto != null
+                                                      ? Image.file(
+                                                    _nphoto!,
+                                                    width: 200.0,
+                                                    height: 200.0,
+                                                    fit: BoxFit.fitHeight,
+                                                  )
+                                                      : Container(
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.red[200]),
+                                                    width: 200,
+                                                    height: 200,
+                                                    child: Icon(
+                                                      Icons.camera_alt,
+                                                      color: Colors.grey[800],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                            child: DropdownButtonHideUnderline(
-                                              child: StreamBuilder<QuerySnapshot>(
-                                                  stream: productiontypespinner,
-                                                  builder: (BuildContext context,
-                                                      AsyncSnapshot<QuerySnapshot>
-                                                      snapshot) {
-                                                    return DropdownButton(
-                                                      value: productiontype,
-                                                      // Down Arrow Icon
-                                                      icon: const Icon(
-                                                          Icons.keyboard_arrow_down),
-                                                      hint: const Text(
-                                                          "Choose Undestory"),
-                                                      // Array list of items
-                                                      items: snapshot.data?.docs
-                                                          .map((govData) {
-                                                        return DropdownMenuItem(
-                                                          value: govData.id,
-                                                          child: Text(govData.id),
-                                                        );
-                                                      }).toList(),
-                                                      onChanged: (String? value) {
-                                                        setState(
-                                                              () {
-                                                            productiontype = value!;
-                                                          },
-                                                        );
-                                                      },
-                                                    );
-                                                  }),
-                                            )),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 10.0,
-                                ),
-                                SizedBox(
-                                  height: 150.0,
-                                  width: 100.0,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      _showPicker(context);
-                                    },
-                                    child: Container(
-                                      width: 200,
-                                      height: 200,
-                                      decoration:
-                                      BoxDecoration(color: Colors.red[200]),
-                                      child: _photo != null
-                                          ? Image.file(
-                                        _photo!,
-                                        width: 200.0,
-                                        height: 200.0,
-                                        fit: BoxFit.fitHeight,
-                                      )
-                                          : Container(
-                                        decoration: BoxDecoration(
-                                            color: Colors.red[200]),
-                                        width: 200,
-                                        height: 200,
-                                        child: Icon(
-                                          Icons.camera_alt,
-                                          color: Colors.grey[800],
+
+                                            SizedBox(
+                                              height: 10,
+                                            ),
+
+                                            Text("Image 1")
+
+                                          ],
+
                                         ),
-                                      ),
+
+                                        Column(
+                                          children: <Widget>[
+                                            SizedBox(
+                                              height: 150.0,
+                                              width: 100.0,
+                                              child: GestureDetector(
+                                                onTap: () {
+
+                                                  north = false;
+                                                  south = true;
+                                                  west = false;
+                                                  east = false;
+
+
+                                                  _showPicker(context);
+                                                },
+                                                child: Container(
+                                                  width: 200,
+                                                  height: 200,
+                                                  decoration:
+                                                  BoxDecoration(color: Colors.red[200]),
+                                                  child: _sphoto != null
+                                                      ? Image.file(
+                                                    _sphoto!,
+                                                    width: 200.0,
+                                                    height: 200.0,
+                                                    fit: BoxFit.fitHeight,
+                                                  )
+                                                      : Container(
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.red[200]),
+                                                    width: 200,
+                                                    height: 200,
+                                                    child: Icon(
+                                                      Icons.camera_alt,
+                                                      color: Colors.grey[800],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(height: 10,),
+                                            Text("Image 2")
+
+
+                                          ],
+
+                                        )
+
+
+
+
+
+                                      ],
+
+
+
                                     ),
-                                  ),
+
+                                    SizedBox(
+                                      height: 10,
+                                    ),
+
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: <Widget>[
+
+                                        Column(
+                                          children: <Widget>[
+                                            SizedBox(
+                                              height: 150.0,
+                                              width: 100.0,
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  north = false;
+                                                  south = false;
+                                                  west = true;
+                                                  east = false;
+                                                  _showPicker(context);
+                                                },
+                                                child: Container(
+                                                  width: 200,
+                                                  height: 200,
+                                                  decoration:
+                                                  BoxDecoration(color: Colors.red[200]),
+                                                  child: _wphoto != null
+                                                      ? Image.file(
+                                                    _wphoto!,
+                                                    width: 200.0,
+                                                    height: 200.0,
+                                                    fit: BoxFit.fitHeight,
+                                                  )
+                                                      : Container(
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.red[200]),
+                                                    width: 200,
+                                                    height: 200,
+                                                    child: Icon(
+                                                      Icons.camera_alt,
+                                                      color: Colors.grey[800],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: 10,
+                                            ),
+                                            Text("Image 3")
+                                          ],
+
+                                        ),
+
+                                        Column(
+                                          children: <Widget>[
+
+                                            SizedBox(
+                                              height: 150.0,
+                                              width: 100.0,
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  north = false;
+                                                  south = false;
+                                                  west = false;
+                                                  east = true;
+                                                  _showPicker(context);
+                                                },
+                                                child: Container(
+                                                  width: 200,
+                                                  height: 200,
+                                                  decoration:
+                                                  BoxDecoration(color: Colors.red[200]),
+                                                  child: _ephoto != null
+                                                      ? Image.file(
+                                                    _ephoto!,
+                                                    width: 200.0,
+                                                    height: 200.0,
+                                                    fit: BoxFit.fitHeight,
+                                                  )
+                                                      : Container(
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.red[200]),
+                                                    width: 200,
+                                                    height: 200,
+                                                    child: Icon(
+                                                      Icons.camera_alt,
+                                                      color: Colors.grey[800],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                            SizedBox(
+                                              height: 10,
+                                            ),
+
+                                            Text("Image 4" )
+
+
+
+                                          ],
+                                        ),
+
+
+
+
+
+                                      ],
+
+                                    ),
+
+                                  ],
+
                                 ),
+
+
+
+
+
+
                                 SizedBox(
                                   height: 10.0,
                                 ),
@@ -506,7 +641,7 @@ class _productionground_page extends State<productionground_page> {
                                         alignment: Alignment.centerLeft,
                                         child: Container(
                                           color: Colors.white,
-                                          child: Text('Observation'),
+                                          child: Text('Description'),
                                         ),
                                       ),
                                     ),
@@ -550,11 +685,14 @@ class _productionground_page extends State<productionground_page> {
                                     ),
                                   ),
                                   onPressed: () {
-
-
                                     writedata();
-
-
+                                    // setState(
+                                    //     (){
+                                    //       evisible = false;
+                                    //       vvisible = true;
+                                    //     }
+                                    // );
+                                    // showdata();
                                   },
                                 ),
                                 SizedBox(
@@ -565,8 +703,6 @@ class _productionground_page extends State<productionground_page> {
 
 
 
-
-
                     Visibility(
                         visible: vvisible,
                         child: SingleChildScrollView(
@@ -574,7 +710,7 @@ class _productionground_page extends State<productionground_page> {
                                 padding:
                                 EdgeInsets.only(top: 80, left: 20, right: 20),
                                 child: Column(children: [
-                                  Text('Production Entries',
+                                  Text('Ground Post Entries',
                                       textAlign: TextAlign.center,
                                       style: const TextStyle(
                                           fontSize: 30.0,
@@ -668,123 +804,152 @@ class _productionground_page extends State<productionground_page> {
                                     ],
                                   ),
                                   SizedBox(height: 10.0),
-                                  new Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Container(
-                                            color: Colors.white,
-                                            child: Text(
-                                              'Distance',
-                                              style: TextStyle(
-                                                  color: Colors.black, fontSize: 17),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Container(
-                                            width: double.infinity,
-                                            height: 50,
-                                            padding: EdgeInsets.fromLTRB(5, 2, 5, 2),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: Colors.red),
-                                            ),
-                                            child: new TextField(
-                                              keyboardType: TextInputType.text,
-                                              style: new TextStyle(
-                                                fontSize: 18.0,
-                                                color: Colors.black,
-                                              ),
-                                              decoration: InputDecoration(
-                                                  border: InputBorder.none,
-                                                  labelText: productiondistance,
-                                                  labelStyle:
-                                                  TextStyle(color: Colors.black)),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+
+                                  new Text(
+                                    "Uploaded Images",
+                                    style:
+                                    TextStyle(color: Colors.black, fontSize: 20),
                                   ),
                                   SizedBox(height: 10.0),
-                                  new Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Container(
-                                            color: Colors.white,
-                                            child: Text(
-                                              'Veg Type',
-                                              style: TextStyle(
-                                                  color: Colors.black, fontSize: 17),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Container(
-                                            width: double.infinity,
-                                            height: 50,
-                                            padding: EdgeInsets.fromLTRB(5, 2, 5, 2),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(color: Colors.red),
-                                            ),
-                                            child: new TextField(
-                                              keyboardType: TextInputType.text,
-                                              style: new TextStyle(
-                                                fontSize: 18.0,
-                                                color: Colors.black,
+
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+
+                                    child: Column(
+                                      children: <Widget>[
+
+                                        new Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                          children: <Widget>[
+                                            Container(
+                                              width: 200,
+                                              height: 200,
+                                              decoration: BoxDecoration(color: Colors.transparent),
+                                              child: _nphoto != null
+                                                  ? Image.file(
+                                                _nphoto!,
+                                                width: 200.0,
+                                                height: 200.0,
+                                                fit: BoxFit.fitHeight,
+                                              )
+                                                  : Container(
+                                                decoration:
+                                                BoxDecoration(color: Colors.transparent),
+                                                width: 200,
+                                                height: 200,
+                                                child: Icon(
+                                                  Icons.camera_alt,
+                                                  color: Colors.grey[800],
+                                                ),
                                               ),
-                                              decoration: InputDecoration(
-                                                  border: InputBorder.none,
-                                                  labelText: productiontype,
-                                                  labelStyle:
-                                                  TextStyle(color: Colors.black)),
                                             ),
-                                          ),
+
+                                            Container(
+                                              width: 200,
+                                              height: 200,
+                                              decoration: BoxDecoration(color: Colors.transparent),
+                                              child: _sphoto != null
+                                                  ? Image.file(
+                                                _sphoto!,
+                                                width: 200.0,
+                                                height: 200.0,
+                                                fit: BoxFit.fitHeight,
+                                              )
+                                                  : Container(
+                                                decoration:
+                                                BoxDecoration(color: Colors.transparent),
+                                                width: 200,
+                                                height: 200,
+                                                child: Icon(
+                                                  Icons.camera_alt,
+                                                  color: Colors.grey[800],
+                                                ),
+                                              ),
+                                            ),
+
+
+
+                                          ],
                                         ),
-                                      ),
-                                    ],
+
+                                        SizedBox(
+                                          height: 20,
+                                        ),
+
+                                        new Row(
+
+
+                                          children: <Widget>[
+
+                                            Container(
+
+
+                                              width: 200,
+                                              height: 200,
+                                              decoration: BoxDecoration(color: Colors.transparent),
+                                              child: _wphoto != null
+                                                  ? Image.file(
+                                                _wphoto!,
+                                                width: 200.0,
+                                                height: 200.0,
+                                                fit: BoxFit.fitHeight,
+                                              )
+                                                  : Container(
+                                                decoration:
+                                                BoxDecoration(color: Colors.transparent),
+                                                width: 200,
+                                                height: 200,
+                                                child: Icon(
+                                                  Icons.camera_alt,
+                                                  color: Colors.grey[800],
+                                                ),
+                                              ),
+                                            ),
+
+
+                                            Container(
+
+
+                                              width: 200,
+                                              height: 200,
+                                              decoration: BoxDecoration(color: Colors.transparent),
+                                              child: _ephoto != null
+                                                  ? Image.file(
+                                                _ephoto!,
+                                                width: 200.0,
+                                                height: 200.0,
+                                                fit: BoxFit.fitHeight,
+                                              )
+                                                  : Container(
+                                                decoration:
+                                                BoxDecoration(color: Colors.transparent),
+                                                width: 200,
+                                                height: 200,
+                                                child: Icon(
+                                                  Icons.camera_alt,
+                                                  color: Colors.grey[800],
+                                                ),
+                                              ),
+                                            ),
+
+
+                                          ],
+
+
+
+
+
+
+                                        ),
+
+                                      ],
+
+                                    )
+
+
                                   ),
 
-                                  SizedBox(height: 20.0),
-                                  new Text(
-                                    "Uploaded Image",
-                                    style:
-                                    TextStyle(color: Colors.white, fontSize: 20),
-                                  ),
-                                  SizedBox(height: 10.0),
-                                  Container(
-                                    width: 200,
-                                    height: 200,
-                                    decoration: BoxDecoration(color: Colors.transparent),
-                                    child: _photo != null
-                                        ? Image.file(
-                                      _photo!,
-                                      width: 200.0,
-                                      height: 200.0,
-                                      fit: BoxFit.fitHeight,
-                                    )
-                                        : Container(
-                                      decoration:
-                                      BoxDecoration(color: Colors.transparent),
-                                      width: 200,
-                                      height: 200,
-                                      child: Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.grey[800],
-                                      ),
-                                    ),
-                                  ),
+
                                   SizedBox(height: 10.0),
                                   new Row(
                                     children: <Widget>[
@@ -843,8 +1008,6 @@ class _productionground_page extends State<productionground_page> {
                                             onPressed: () async {
 
 
-                                              // uploadprocess
-
 
                                                 try{
 
@@ -858,36 +1021,40 @@ class _productionground_page extends State<productionground_page> {
                                                   var sdf = new DateFormat('dd/MM/yyy HH:mm:ss');//SimpleDateFormat("dd/MM/yyy_HH:mm:ss", Locale.getDefault());
                                                   String currentDateandTime = sdf.format(now);
 
-                                                  dbref.child("alldata").child(formattedDate)
+                                                  dbref.child("mydata").child(FirebaseAuth.instance.currentUser.uid)
+                                                      .child("post")
                                                       .child(id).set(
                                                       {
-                                                        'date': id,
-                                                    'lattitude': slat,
-                                                    'longitude': slng,
-                                                    'distance': productiondistance,
-                                                    'main1height': productiontype,
-                                                    'obv': eobv.text,
-                                                    'nimage' :imageurl,
-                                                    'ground': 'production',
-                                                    'id': id,
-                                                    'owner': ownername,
-                                                    'posteddate': currentDateandTime
-                                                  });
+                                                        'date': formattedDate,
+                                                        'lattitude': slat,
+                                                        'longitude': slng,
+                                                        'descrption': eobv.text,
+                                                        'nimage': northimage,
+                                                        'ground': "post",
+                                                        'simage' : southimage,
+                                                        'wimage': westimage,
+                                                        'nimage': northimage,
+                                                        'eimage': eastimage,
+                                                        'id': id,
+                                                        'owner': ownername,
+                                                        'posteddate': currentDateandTime
+                                                      });
 
                                                   try{
-                                                    dbref.child("mydata")
-                                                        .child(FirebaseAuth.instance.currentUser.uid)
-                                                    .child("productiondata")
-                                                    .child(id)
+                                                    dbref.child("postdata")
+                                                        .child(id)
                                                         .set(
-                                                        {'date': id,
+                                                        {
+                                                          'date': formattedDate,
                                                           'lattitude': slat,
                                                           'longitude': slng,
-                                                          'distance': productiondistance,
-                                                          'main1height': productiontype,
-                                                          'obv': eobv.text,
-                                                          'nimage' :imageurl,
-                                                          'ground': 'production',
+                                                          'descrption': eobv.text,
+                                                          'nimage': northimage,
+                                                          'ground': "post",
+                                                          'simage' : southimage,
+                                                          'wimage': westimage,
+                                                          'nimage': northimage,
+                                                          'eimage': eastimage,
                                                           'id': id,
                                                           'owner': ownername,
                                                           'posteddate': currentDateandTime
@@ -896,26 +1063,27 @@ class _productionground_page extends State<productionground_page> {
 
                                                     try {
 
-                                                      dbref.child("productiondata")
-                                                          .child(id)
+                                                      dbref.child("alldata")
+                                                      .child(formattedDate)
+                                                      .child(id)
                                                       .set(
-                                                        {
-                                                          'date': id,
-                                                          'lattitude': slat,
-                                                          'longitude': slng,
-                                                          'distance': productiondistance,
-                                                          'main1height': productiontype,
-                                                          'obv': eobv.text,
-                                                          'nimage' :imageurl,
-                                                          'ground': 'production',
-                                                          'id': id,
-                                                          'owner': ownername,
-                                                          'posteddate': currentDateandTime
-                                                        }
+                                                          {
+                                                            'date': formattedDate,
+                                                            'lattitude': slat,
+                                                            'longitude': slng,
+                                                            'descrption': eobv.text,
+                                                            'nimage': northimage,
+                                                            'ground': "post",
+                                                            'simage' : southimage,
+                                                            'wimage': westimage,
+                                                            'nimage': northimage,
+                                                            'eimage': eastimage,
+                                                            'id': id,
+                                                            'owner': ownername,
+                                                            'posteddate': currentDateandTime
 
+                                                          }
                                                       );
-
-
 
 
                                                       Navigator.push(
@@ -923,10 +1091,11 @@ class _productionground_page extends State<productionground_page> {
                                                         MaterialPageRoute(
                                                             builder: (
                                                                 context) =>
-                                                                production_page()),
+                                                                post_page()),
                                                       );
                                                     }catch(e){
-                                                      print(e);
+
+
                                                     }
 
 
@@ -941,6 +1110,8 @@ class _productionground_page extends State<productionground_page> {
                                                 }catch(e){
                                                   print("errorr2"+ e.toString());
                                                 }
+
+
 
 
 
@@ -980,8 +1151,6 @@ class _productionground_page extends State<productionground_page> {
 
 
 
-
-
                   ],
                 ),
               ))),
@@ -989,11 +1158,7 @@ class _productionground_page extends State<productionground_page> {
 
 
     );
-
-
   }
-
-
 
   void _showPicker(context) {
     showModalBottomSheet(
@@ -1021,4 +1186,5 @@ class _productionground_page extends State<productionground_page> {
           );
         });
   }
+
 }
